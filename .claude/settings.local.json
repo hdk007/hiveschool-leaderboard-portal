@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Start-Sleep -Seconds 6; Get-Content \"C:\\\\Users\\\\hardi\\\\OneDrive\\\\Desktop\\\\HiveLeaderboard2\\\\dev-output.log\" -Tail 5 | Where-Object { $_ -match \"Local|Ready|Error\" })"
-    ]
-  }
-}
