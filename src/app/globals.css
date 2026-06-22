@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   HiveSchool design system — CSS variables (HSL channels) consumed by Tailwind.
+   Light theme matches the spec palette; dark theme is a premium slate variant.
+   ============================================================================= */
+@layer base {
+  :root {
+    --background: 0 0% 100%;            /* #FFFFFF */
+    --foreground: 221 39% 11%;          /* #111827 */
+
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 221 39% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+
+    --primary: 222 47% 11%;             /* #0F172A */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 98%;           /* #F8FAFC */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 220 9% 46%;     /* #6B7280 */
+
+    --accent: 262 83% 58%;              /* #7C3AED */
+    --accent-foreground: 0 0% 100%;
+
+    --success: 160 84% 39%;             /* #10B981 */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;              /* #F59E0B */
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;           /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;              /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 16%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 262 83% 64%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 160 74% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 52%;
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 22%;
+    --ring: 262 83% 64%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Refined scrollbars for the premium SaaS feel. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism surface — used sparingly per the spec. */
+  .glass {
+    @apply border border-white/40 bg-white/70 backdrop-blur-xl;
+  }
+  .dark .glass {
+    @apply border-white/10 bg-white/5;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent via-violet-500 to-indigo-500 bg-clip-text text-transparent;
+  }
+
+  .bg-grid {
+    background-image: linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Animated number / mono-tabular for stats */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

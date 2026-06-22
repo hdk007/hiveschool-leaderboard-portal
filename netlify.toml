@@ -1,0 +1,48 @@
+# =============================================================================
+# HiveSchool Leaderboard Portal — Netlify Configuration
+# =============================================================================
+
+[build]
+  command   = "npm run build"
+  publish   = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS    = "--legacy-peer-deps"
+
+# The official Netlify adapter for Next.js App Router, Server Actions,
+# middleware, and Image Optimisation.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ---------------------------------------------------------------------------
+# Mark @opentelemetry/api as external so the Netlify edge-functions bundler
+# (esbuild) does not try to inline it. The package is a runtime peer dep
+# pulled in by @netlify/plugin-nextjs instrumentation — it should be resolved
+# from node_modules at runtime, not bundled.
+# ---------------------------------------------------------------------------
+[functions]
+  external_node_modules = ["@opentelemetry/api"]
+
+# ---------------------------------------------------------------------------
+# Security & performance headers applied to every route
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+# Cache static assets aggressively (Next.js content-hashes them)
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Never cache HTML pages (they are server-rendered and dynamic)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
