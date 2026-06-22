@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createModule, updateModule } from "@/app/actions/curriculum";
 import type { ModuleInput } from "@/lib/validators";
-import type { CurriculumModule, ResourceLink } from "@/types/database";
+import type { CurriculumModule, ResourceLink, ScheduleItem } from "@/types/database";
 import { toast } from "sonner";
 
 interface Props {
@@ -23,9 +23,11 @@ interface Props {
 interface FormState {
   module_name: string;
   description: string;
+  outcome: string;
   duration: string;
   order_index: number;
   completion_percentage: number;
+  scheduleText: string;
   topicsText: string;
   assignmentsText: string;
   resourcesText: string;
@@ -34,9 +36,11 @@ interface FormState {
 const blank = (order: number): FormState => ({
   module_name: "",
   description: "",
+  outcome: "",
   duration: "",
   order_index: order,
   completion_percentage: 0,
+  scheduleText: "",
   topicsText: "",
   assignmentsText: "",
   resourcesText: "",
@@ -50,6 +54,17 @@ function parseResources(text: string): ResourceLink[] {
     return { label: label ?? line, url: url ?? "#" };
   });
 }
+
+/** Each line is "time | title | detail". */
+function parseSchedule(text: string): ScheduleItem[] {
+  return linesToArray(text).map((line) => {
+    const [time, title, detail] = line.split("|").map((s) => s.trim());
+    return { time: time ?? "", title: title ?? "", detail: detail ?? "" };
+  });
+}
+
+const scheduleToText = (schedule: ScheduleItem[]) =>
+  (schedule ?? []).map((s) => [s.time, s.title, s.detail].filter(Boolean).join(" | ")).join("\n");
 
 export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: Props) {
   const [form, setForm] = React.useState<FormState>(blank(nextOrder));
@@ -66,9 +81,11 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
           ? {
               module_name: module.module_name,
               description: module.description ?? "",
+              outcome: module.outcome ?? "",
               duration: module.duration ?? "",
               order_index: module.order_index,
               completion_percentage: Number(module.completion_percentage),
+              scheduleText: scheduleToText(module.schedule ?? []),
               topicsText: (module.topics ?? []).join("\n"),
               assignmentsText: (module.assignments ?? []).join("\n"),
               resourcesText: (module.resources ?? []).map((r) => `${r.label} | ${r.url}`).join("\n"),
@@ -85,9 +102,11 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
     const payload: ModuleInput = {
       module_name: form.module_name,
       description: form.description,
+      outcome: form.outcome,
       duration: form.duration,
       order_index: form.order_index,
       completion_percentage: form.completion_percentage,
+      schedule: parseSchedule(form.scheduleText),
       topics: linesToArray(form.topicsText),
       assignments: linesToArray(form.assignmentsText),
       resources: parseResources(form.resourcesText),
@@ -116,12 +135,16 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
             <Input value={form.module_name} onChange={(e) => setForm((f) => ({ ...f, module_name: e.target.value }))} required />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Description</Label>
+            <Label>Description (what you&apos;ll do)</Label>
             <Textarea rows={2} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Outcome — &ldquo;you&apos;ll walk away with…&rdquo;</Label>
+            <Input placeholder="e.g. a live MVP and a one page business model" value={form.outcome} onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value }))} />
+          </div>
           <div className="space-y-1.5">
-            <Label>Duration</Label>
-            <Input placeholder="e.g. 2 weeks" value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} />
+            <Label>Day / Duration</Label>
+            <Input placeholder="e.g. Day 1 · Tue 23 Jun" value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} />
           </div>
           <div className={isEdit ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
             {isEdit && (
@@ -135,6 +158,16 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
               <Input type="number" min={0} max={100} value={form.completion_percentage} onChange={(e) => setForm((f) => ({ ...f, completion_percentage: Number(e.target.value) }))} />
             </div>
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Schedule — one slot per line: <span className="font-mono text-xs">time | title | detail</span></Label>
+          <Textarea
+            rows={6}
+            placeholder={"10:00 AM | Welcome & kickoff | Meet everyone and form your team\n12:30 PM | Lunch |"}
+            value={form.scheduleText}
+            onChange={(e) => setForm((f) => ({ ...f, scheduleText: e.target.value }))}
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

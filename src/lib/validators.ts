@@ -27,9 +27,13 @@ export type TeamInput = z.infer<typeof teamSchema>;
 export const moduleSchema = z.object({
   module_name: z.string().min(2, "Module name is required"),
   description: z.string().optional().nullable(),
+  outcome: z.string().optional().nullable(),
   duration: z.string().optional().nullable(),
   completion_percentage: z.coerce.number().min(0).max(100).default(0),
   order_index: z.coerce.number().int().min(0).default(0),
+  schedule: z
+    .array(z.object({ time: z.string(), title: z.string(), detail: z.string().optional() }))
+    .default([]),
   topics: z.array(z.string()).default([]),
   assignments: z.array(z.string()).default([]),
   resources: z
@@ -37,6 +41,25 @@ export const moduleSchema = z.object({
     .default([]),
 });
 export type ModuleInput = z.infer<typeof moduleSchema>;
+
+export const mentorSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  role: z.string().optional().nullable(),
+  bio: z.string().optional().nullable(),
+  photo: z.string().url("Must be a valid URL").optional().or(z.literal("")).nullable(),
+  order_index: z.coerce.number().int().min(0).default(0),
+});
+export type MentorInput = z.infer<typeof mentorSchema>;
+
+export const campInfoSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  subtitle: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  date_range: z.string().optional().nullable(),
+  when_to_come: z.array(z.string()).default([]),
+  what_to_bring: z.array(z.string()).default([]),
+});
+export type CampInfoInput = z.infer<typeof campInfoSchema>;
 
 export const announcementSchema = z.object({
   title: z.string().min(2, "Title is required"),

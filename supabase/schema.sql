@@ -129,6 +129,8 @@ create table if not exists public.curriculum_modules (
   id                     uuid primary key default gen_random_uuid(),
   module_name            text not null,
   description            text,
+  outcome                text,                                 -- "you'll walk away with…"
+  schedule               jsonb not null default '[]'::jsonb,   -- array of { time, title, detail }
   topics                 jsonb not null default '[]'::jsonb,
   assignments            jsonb not null default '[]'::jsonb,
   resources              jsonb not null default '[]'::jsonb,
@@ -137,6 +139,36 @@ create table if not exists public.curriculum_modules (
   order_index            integer not null default 0,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- mentors (people running the program)
+-- -----------------------------------------------------------------------------
+create table if not exists public.mentors (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  role        text,
+  bio         text,
+  photo       text,
+  order_index integer not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists idx_mentors_order on public.mentors (order_index);
+
+-- -----------------------------------------------------------------------------
+-- camp_info (single-row program header: dates, logistics)
+-- -----------------------------------------------------------------------------
+create table if not exists public.camp_info (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null default 'BuildCamp',
+  subtitle      text,
+  location      text,
+  date_range    text,
+  when_to_come  jsonb not null default '[]'::jsonb,
+  what_to_bring jsonb not null default '[]'::jsonb,
+  updated_at    timestamptz not null default now()
 );
 
 create index if not exists idx_curriculum_order on public.curriculum_modules (order_index);
@@ -311,7 +343,7 @@ declare
 begin
   foreach t in array array[
     'admins', 'teams', 'students', 'leaderboard_settings', 'curriculum_modules',
-    'announcements', 'daily_challenges', 'achievements'
+    'announcements', 'daily_challenges', 'achievements', 'mentors', 'camp_info'
   ]
   loop
     execute format('drop trigger if exists trg_set_updated_at on public.%I;', t);
@@ -574,6 +606,8 @@ alter table public.team_challenge_scores enable row level security;
 alter table public.leaderboard_history   enable row level security;
 alter table public.notifications         enable row level security;
 alter table public.activity_logs         enable row level security;
+alter table public.mentors               enable row level security;
+alter table public.camp_info             enable row level security;
 
 do $$
 declare
@@ -582,7 +616,8 @@ begin
   foreach t in array array[
     'teams', 'students', 'leaderboard_settings', 'curriculum_modules', 'announcements',
     'daily_challenges', 'achievements', 'student_achievements',
-    'student_challenge_scores', 'team_challenge_scores', 'leaderboard_history', 'notifications'
+    'student_challenge_scores', 'team_challenge_scores', 'leaderboard_history', 'notifications',
+    'mentors', 'camp_info'
   ]
   loop
     execute format('drop policy if exists "public_read_%1$s" on public.%1$s;', t);
@@ -701,7 +736,7 @@ begin
   foreach t in array array[
     'teams', 'students', 'announcements', 'daily_challenges', 'curriculum_modules',
     'achievements', 'student_achievements', 'notifications', 'leaderboard_settings',
-    'student_challenge_scores', 'team_challenge_scores'
+    'student_challenge_scores', 'team_challenge_scores', 'mentors', 'camp_info'
   ]
   loop
     begin

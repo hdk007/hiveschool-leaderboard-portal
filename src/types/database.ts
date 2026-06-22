@@ -58,10 +58,21 @@ export interface ResourceLink {
   url: string;
 }
 
+/** A single time-slot in a day's schedule. */
+export interface ScheduleItem {
+  time: string;
+  title: string;
+  detail?: string;
+}
+
 export interface CurriculumModule {
   id: string;
   module_name: string;
   description: string | null;
+  /** "You'll walk away with…" — the day's headline outcome. */
+  outcome: string | null;
+  /** The day's time-slot schedule. */
+  schedule: ScheduleItem[];
   topics: string[];
   assignments: string[];
   resources: ResourceLink[];
@@ -69,6 +80,28 @@ export interface CurriculumModule {
   completion_percentage: number;
   order_index: number;
   created_at: string;
+  updated_at: string;
+}
+
+export interface Mentor {
+  id: string;
+  name: string;
+  role: string | null;
+  bio: string | null;
+  photo: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampInfo {
+  id: string;
+  name: string;
+  subtitle: string | null;
+  location: string | null;
+  date_range: string | null;
+  when_to_come: string[];
+  what_to_bring: string[];
   updated_at: string;
 }
 

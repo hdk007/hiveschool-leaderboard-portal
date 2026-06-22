@@ -6,9 +6,11 @@ import type {
   ActivityLog,
   Announcement,
   AppNotification,
+  CampInfo,
   CurriculumModule,
   LeaderboardHistory,
   LeaderboardSettings,
+  Mentor,
   Student,
   StudentAchievement,
   WeeklyChallenge,
@@ -286,6 +288,38 @@ export async function getCurriculum() {
   } catch (err) {
     console.error("Error in getCurriculum:", err);
     return [];
+  }
+}
+
+export async function getMentors() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("mentors")
+      .select("*")
+      .order("order_index", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Mentor[];
+  } catch (err) {
+    console.error("Error in getMentors:", err);
+    return [];
+  }
+}
+
+export async function getCampInfo() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("camp_info")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as CampInfo) ?? null;
+  } catch (err) {
+    console.error("Error in getCampInfo:", err);
+    return null;
   }
 }
 
