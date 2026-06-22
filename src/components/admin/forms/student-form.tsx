@@ -40,6 +40,8 @@ export function StudentForm({ open, onOpenChange, student, teams, onSaved }: Pro
   const [saving, setSaving] = React.useState(false);
   const isEdit = Boolean(student);
 
+  // Initialise only when the dialog OPENS (or the edited student changes); not on
+  // `teams` changes, so a live team update can't wipe in-progress input.
   React.useEffect(() => {
     if (open) {
       setForm(
@@ -59,7 +61,8 @@ export function StudentForm({ open, onOpenChange, student, teams, onSaved }: Pro
           : { ...EMPTY, team_id: teams[0]?.id ?? "" }
       );
     }
-  }, [open, student, teams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, student]);
 
   const set = <K extends keyof StudentInput>(key: K, value: StudentInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));

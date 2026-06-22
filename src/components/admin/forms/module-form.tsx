@@ -56,6 +56,9 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
   const [saving, setSaving] = React.useState(false);
   const isEdit = Boolean(module);
 
+  // Initialise the form only when the dialog OPENS (or the edited module changes).
+  // Intentionally not depending on `nextOrder` — otherwise a live curriculum
+  // update from the realtime subscription would wipe in-progress input.
   React.useEffect(() => {
     if (open) {
       setForm(
@@ -73,7 +76,8 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
           : blank(nextOrder)
       );
     }
-  }, [open, module, nextOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, module]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,11 +123,13 @@ export function ModuleForm({ open, onOpenChange, module, nextOrder, onSaved }: P
             <Label>Duration</Label>
             <Input placeholder="e.g. 2 weeks" value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Order</Label>
-              <Input type="number" min={0} value={form.order_index} onChange={(e) => setForm((f) => ({ ...f, order_index: Number(e.target.value) }))} />
-            </div>
+          <div className={isEdit ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
+            {isEdit && (
+              <div className="space-y-1.5">
+                <Label>Order</Label>
+                <Input type="number" min={0} value={form.order_index} onChange={(e) => setForm((f) => ({ ...f, order_index: Number(e.target.value) }))} />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Completion %</Label>
               <Input type="number" min={0} max={100} value={form.completion_percentage} onChange={(e) => setForm((f) => ({ ...f, completion_percentage: Number(e.target.value) }))} />

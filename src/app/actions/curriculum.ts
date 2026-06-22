@@ -17,7 +17,23 @@ export async function createModule(input: ModuleInput): Promise<MutationResult> 
     await requireAdmin();
     const data = moduleSchema.parse(input);
     const supabase = await createClient();
-    const { data: row, error } = await supabase.from("curriculum_modules").insert(data).select("id").single();
+
+    // Server-authoritative ordering: always append a new module to the end so the
+    // client never has to compute order_index (avoids collisions/races and lets you
+    // add unlimited modules reliably). Editing can still re-order via updateModule.
+    const { data: last } = await supabase
+      .from("curriculum_modules")
+      .select("order_index")
+      .order("order_index", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const order_index = (Number(last?.order_index) || 0) + 1;
+
+    const { data: row, error } = await supabase
+      .from("curriculum_modules")
+      .insert({ ...data, order_index })
+      .select("id")
+      .single();
     if (error) throw error;
     await logActivity({ action: "created", entity_type: "curriculum", entity_id: row.id, metadata: { name: data.module_name } });
     revalidate();
