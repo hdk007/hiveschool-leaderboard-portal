@@ -19,12 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { RankBadge, RankChange } from "@/components/shared/rank-badge";
 import { StudentProfileModal } from "@/components/modals/student-profile-modal";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { exportLeaderboardCSV, exportLeaderboardPDF, type ExportStudent } from "@/lib/export";
-import { formatCurrency, formatNumber, timeAgo } from "@/lib/utils";
+import { formatNumber, timeAgo } from "@/lib/utils";
 import type { Student } from "@/types/database";
 import { toast } from "sonner";
 
@@ -36,15 +37,13 @@ interface Props {
   pageSize?: number;
 }
 
-type SortKey = "rank" | "final_score" | "revenue_generated" | "assignments_completed" | "attendance_percentage" | "challenge_score" | "growth_percentage";
+type SortKey = "rank" | "final_score" | "assignments_completed" | "attendance_percentage" | "growth_percentage";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "rank", label: "Rank" },
   { value: "final_score", label: "Final Score" },
-  { value: "revenue_generated", label: "Revenue" },
   { value: "assignments_completed", label: "Assignments" },
   { value: "attendance_percentage", label: "Attendance" },
-  { value: "challenge_score", label: "Challenge" },
   { value: "growth_percentage", label: "Growth" },
 ];
 
@@ -208,10 +207,8 @@ export function LeaderboardTable({ initialStudents, initialTotal, pageSize = 10 
               <TableHead>Student</TableHead>
               <TableHead>Team</TableHead>
               <TableHead>Final Score</TableHead>
-              <TableHead className="hidden lg:table-cell">Revenue</TableHead>
-              <TableHead className="hidden xl:table-cell text-center">Assignments</TableHead>
-              <TableHead className="hidden lg:table-cell text-center">Attendance</TableHead>
-              <TableHead className="hidden lg:table-cell text-center">Challenge Score</TableHead>
+              <TableHead className="hidden text-center sm:table-cell">Assignments</TableHead>
+              <TableHead className="hidden lg:table-cell">Attendance</TableHead>
               <TableHead>Growth</TableHead>
               <TableHead className="hidden xl:table-cell">Updated</TableHead>
             </TableRow>
@@ -220,12 +217,12 @@ export function LeaderboardTable({ initialStudents, initialTotal, pageSize = 10 
             {loading && students.length === 0 ? (
               Array.from({ length: pageSize }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={10}><Skeleton className="h-8 w-full" /></TableCell>
+                  <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : students.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="py-10">
+                <TableCell colSpan={8} className="py-10">
                   {search || selectedTeamId ? (
                     <EmptyState icon={Search} title="No students found" description="Try adjusting your search or filters." />
                   ) : (
@@ -267,10 +264,13 @@ export function LeaderboardTable({ initialStudents, initialTotal, pageSize = 10 
                       )}
                     </TableCell>
                     <TableCell className="font-semibold tabular">{Number(s.final_score).toFixed(1)}</TableCell>
-                    <TableCell className="hidden tabular lg:table-cell">{formatCurrency(s.revenue_generated)}</TableCell>
-                    <TableCell className="hidden tabular xl:table-cell text-center">{formatNumber(s.assignments_completed)}</TableCell>
-                    <TableCell className="hidden tabular lg:table-cell text-center">{Number(s.attendance_percentage).toFixed(0)}%</TableCell>
-                    <TableCell className="hidden tabular lg:table-cell text-center">{Number(s.challenge_score).toFixed(0)}</TableCell>
+                    <TableCell className="hidden tabular text-center sm:table-cell">{formatNumber(s.assignments_completed)}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="flex w-28 items-center gap-2">
+                        <Progress value={Number(s.attendance_percentage)} className="h-1.5 flex-1" />
+                        <span className="w-9 shrink-0 text-right text-xs tabular text-muted-foreground">{Number(s.attendance_percentage).toFixed(0)}%</span>
+                      </div>
+                    </TableCell>
                     <TableCell><RankChange rank={s.rank} previousRank={s.previous_rank} /></TableCell>
                     <TableCell className="hidden whitespace-nowrap text-xs text-muted-foreground xl:table-cell">{timeAgo(s.updated_at)}</TableCell>
                   </motion.tr>

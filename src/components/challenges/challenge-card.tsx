@@ -65,7 +65,7 @@ export function ChallengeCard({
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Users className="size-4" />
-            <span className="font-semibold text-foreground tabular">{participants}</span> graded
+            <span className="font-semibold text-foreground tabular">{participants}</span> teams scored
           </div>
         </div>
 

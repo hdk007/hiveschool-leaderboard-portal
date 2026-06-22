@@ -11,9 +11,7 @@ export const studentSchema = z.object({
   attendance_percentage: z.coerce.number().min(0).max(100).default(0),
   status: z.enum(["active", "inactive"]).default("active"),
   notes: z.string().optional().nullable(),
-  revenue_generated: z.coerce.number().min(0).default(0),
   assignments_completed: z.coerce.number().int().min(0).default(0),
-  challenge_score: z.coerce.number().min(0).default(0),
   batch: z.string().optional().nullable(),
 });
 export type StudentInput = z.infer<typeof studentSchema>;
@@ -69,19 +67,20 @@ export type AchievementInput = z.infer<typeof achievementSchema>;
 
 export const settingsSchema = z
   .object({
-    revenue_weight: z.coerce.number().min(0).max(1),
     assignment_weight: z.coerce.number().min(0).max(1),
     attendance_weight: z.coerce.number().min(0).max(1),
-    challenge_weight: z.coerce.number().min(0).max(1),
   })
-  .refine(
-    (w) =>
-      Math.abs(
-        w.revenue_weight + w.assignment_weight + w.attendance_weight + w.challenge_weight - 1
-      ) < 0.001,
-    { message: "Weights must add up to 100%." }
-  );
+  .refine((w) => Math.abs(w.assignment_weight + w.attendance_weight - 1) < 0.001, {
+    message: "Weights must add up to 100%.",
+  });
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+/** A single team's daily-challenge score (used by the admin scoring modal). */
+export const teamChallengeScoreSchema = z.object({
+  team_id: z.string().uuid(),
+  score: z.coerce.number().min(0).default(0),
+});
+export type TeamChallengeScoreInput = z.infer<typeof teamChallengeScoreSchema>;
 
 export const loginSchema = z.object({
   email: z.string().email("Valid email required"),

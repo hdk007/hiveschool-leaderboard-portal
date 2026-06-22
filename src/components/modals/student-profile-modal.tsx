@@ -12,7 +12,7 @@ import { RankChange } from "@/components/shared/rank-badge";
 import { AreaTrendChart } from "@/components/charts/charts";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { formatDate, formatNumber, formatCurrency } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
 import type { Achievement, LeaderboardHistory, Student, Team } from "@/types/database";
 
 interface Props {
@@ -79,7 +79,7 @@ export function StudentProfileModal({ studentId, open, onOpenChange }: Props) {
 
   const projectTrend = history.map((h) => ({
     date: formatDate(h.snapshot_at, { month: "short", day: "numeric" }),
-    project: Number(h.avg_revenue),
+    project: Number(h.total_points),
   }));
 
   const weeklyGrowth = student.growth_percentage ? Number(student.growth_percentage) : 0;
@@ -95,10 +95,10 @@ export function StudentProfileModal({ studentId, open, onOpenChange }: Props) {
       : weeklyGrowth;
 
   const stats = [
-    { label: "Revenue Generated", value: formatCurrency(student.revenue_generated), icon: Award, color: "#10B981" },
-    { label: "Assignments Completed", value: `${formatNumber(student.assignments_completed)} / 24`, icon: ClipboardCheck, color: "#6366F1" },
-    { label: "Attendance Record", value: `${Number(student.attendance_percentage).toFixed(0)}%`, icon: CalendarCheck, color: "#0EA5E9" },
-    { label: "Challenge Points", value: formatNumber(student.challenge_score), icon: Trophy, color: "#F59E0B" },
+    { label: "Final Score", value: Number(student.final_score).toFixed(1), icon: Award, color: "#10B981" },
+    { label: "Assignments", value: formatNumber(student.assignments_completed), icon: ClipboardCheck, color: "#6366F1" },
+    { label: "Attendance", value: `${Number(student.attendance_percentage).toFixed(0)}%`, icon: CalendarCheck, color: "#0EA5E9" },
+    { label: "Individual Rank", value: student.rank ? `#${student.rank}` : "—", icon: Trophy, color: "#F59E0B" },
   ];
 
   return (
@@ -150,6 +150,17 @@ export function StudentProfileModal({ studentId, open, onOpenChange }: Props) {
             ))}
           </div>
 
+          {/* Performance bars */}
+          <div className="mt-4 space-y-3 rounded-xl border border-border bg-secondary/40 p-4">
+            <MetricBar label="Attendance" value={Number(student.attendance_percentage)} display={`${Number(student.attendance_percentage).toFixed(0)}%`} color="#0EA5E9" />
+            <MetricBar
+              label="Assignments completed"
+              value={Math.min(100, (Number(student.assignments_completed) / 24) * 100)}
+              display={`${formatNumber(student.assignments_completed)} / 24`}
+              color="#6366F1"
+            />
+          </div>
+
           {/* Growth */}
           <div className="mt-4 grid grid-cols-2 gap-3">
             <GrowthCard label="Weekly Growth Status" value={weeklyGrowth} />
@@ -172,9 +183,9 @@ export function StudentProfileModal({ studentId, open, onOpenChange }: Props) {
 
           {/* Performance timeline */}
           <div className="mt-6">
-            <p className="mb-1 text-sm font-semibold">Team Average Revenue Timeline</p>
+            <p className="mb-1 text-sm font-semibold">Team Points Timeline</p>
             {projectTrend.length > 1 ? (
-              <AreaTrendChart data={projectTrend} xKey="date" dataKey="project" height={180} valueFormatter={(v) => `$${v.toFixed(0)}`} />
+              <AreaTrendChart data={projectTrend} xKey="date" dataKey="project" height={180} valueFormatter={(v) => v.toFixed(0)} />
             ) : (
               <EmptyState icon={TrendingUp} title="Not enough history yet" description="Trends appear after snapshots are recorded." />
             )}
@@ -190,6 +201,18 @@ export function StudentProfileModal({ studentId, open, onOpenChange }: Props) {
         </>
       )}
     </Dialog>
+  );
+}
+
+function MetricBar({ label, value, display, color }: { label: string; value: number; display: string; color: string }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-semibold tabular">{display}</span>
+      </div>
+      <Progress value={value} indicatorStyle={{ backgroundColor: color }} />
+    </div>
   );
 }
 

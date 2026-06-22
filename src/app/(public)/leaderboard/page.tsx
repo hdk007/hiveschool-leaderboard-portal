@@ -7,7 +7,7 @@ import { PAGE_SIZE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
-  description: "Live student rankings across sales revenue, assignments, attendance and challenges.",
+  description: "Live student rankings across assignments and attendance.",
 };
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function LeaderboardPage() {
       <PageHeader
         eyebrow="Live Standings"
         title="Leaderboard"
-        description="Every score is computed live from individual sales revenue, assignments, attendance and challenge performance. Rankings update in real time across all devices."
+        description="Every student's score is computed live from assignments completed and attendance. Daily challenges are scored at the team level. Rankings update in real time across all devices."
       >
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <span className="relative flex size-2">

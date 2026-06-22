@@ -29,9 +29,7 @@ const EMPTY: StudentInput = {
   profile_image: "",
   team_id: "",
   attendance_percentage: 0,
-  revenue_generated: 0,
   assignments_completed: 0,
-  challenge_score: 0,
   batch: "",
   status: "active",
   notes: "",
@@ -53,9 +51,7 @@ export function StudentForm({ open, onOpenChange, student, teams, onSaved }: Pro
               profile_image: student.profile_image ?? "",
               team_id: student.team_id ?? "",
               attendance_percentage: Number(student.attendance_percentage),
-              revenue_generated: Number(student.revenue_generated),
               assignments_completed: Number(student.assignments_completed),
-              challenge_score: Number(student.challenge_score),
               batch: student.batch ?? "",
               status: student.status,
               notes: student.notes ?? "",
@@ -118,14 +114,8 @@ export function StudentForm({ open, onOpenChange, student, teams, onSaved }: Pro
           <Field label="Attendance %">
             <Input type="number" min={0} max={100} step="0.1" value={form.attendance_percentage} onChange={(e) => set("attendance_percentage", Number(e.target.value))} />
           </Field>
-          <Field label="Revenue Generated ($)">
-            <Input type="number" min={0} step="0.01" value={form.revenue_generated ?? 0} onChange={(e) => set("revenue_generated", Number(e.target.value))} />
-          </Field>
           <Field label="Assignments Completed">
             <Input type="number" min={0} step={1} value={form.assignments_completed ?? 0} onChange={(e) => set("assignments_completed", Number(e.target.value))} />
-          </Field>
-          <Field label="Challenge Score">
-            <Input type="number" min={0} step="0.1" value={form.challenge_score ?? 0} onChange={(e) => set("challenge_score", Number(e.target.value))} />
           </Field>
           <Field label="Status">
             <Select value={form.status} onChange={(e) => set("status", e.target.value as "active" | "inactive")}>

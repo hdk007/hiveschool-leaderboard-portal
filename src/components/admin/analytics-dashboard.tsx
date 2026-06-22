@@ -9,18 +9,18 @@ import { AreaTrendChart, MultiLineChart, SimpleBarChart, DonutChart } from "@/co
 import { CHART_COLORS } from "@/lib/constants";
 import type { PlatformStats } from "@/lib/queries";
 
-interface TrendPoint { date: string; projectScore: number; attendance: number; score: number }
+interface TrendPoint { date: string; points: number; attendance: number }
 
 interface Props {
   stats: PlatformStats;
   trend: TrendPoint[];
-  projectScoreByTeam: { team: string; score: number }[];
-  challengeParticipation: { title: string; participants: number }[];
+  teamPoints: { team: string; points: number }[];
+  challengeParticipation: { title: string; teams: number }[];
   batchDistribution: { name: string; value: number; color: string }[];
   completionRate: number;
 }
 
-export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challengeParticipation, batchDistribution, completionRate }: Props) {
+export function AnalyticsDashboard({ stats, trend, teamPoints, challengeParticipation, batchDistribution, completionRate }: Props) {
   const [range, setRange] = React.useState("all");
 
   const filteredTrend = React.useMemo(() => {
@@ -44,7 +44,7 @@ export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challenge
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard index={0} label="Avg Project Score" value={stats.avgProjectScore} icon={Award} accent="#F59E0B" format="decimal" />
+        <StatCard index={0} label="Avg Score" value={stats.avgScore} icon={Award} accent="#F59E0B" format="decimal" />
         <StatCard index={1} label="Active Students" value={stats.activeStudents} icon={Users} accent="#10B981" />
         <StatCard index={2} label="Avg Attendance" value={stats.avgAttendance} icon={CalendarCheck} accent="#0EA5E9" format="percent1" />
         <StatCard index={3} label="Assignment Rate" value={completionRate} icon={Trophy} accent="#7C3AED" format="percent" />
@@ -53,20 +53,20 @@ export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challenge
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Project Score Trends</CardTitle>
-            <CardDescription>Average project score across recorded snapshots.</CardDescription>
+            <CardTitle>Team Points Trend</CardTitle>
+            <CardDescription>Average team points across recorded snapshots.</CardDescription>
           </CardHeader>
           <CardContent>
             {filteredTrend.length > 1 ? (
-              <AreaTrendChart data={filteredTrend} xKey="date" dataKey="projectScore" color={CHART_COLORS.warning} valueFormatter={(v) => v.toFixed(1)} />
+              <AreaTrendChart data={filteredTrend} xKey="date" dataKey="points" color={CHART_COLORS.warning} valueFormatter={(v) => v.toFixed(1)} />
             ) : <Empty />}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Attendance & Score</CardTitle>
-            <CardDescription>Average attendance and leaderboard score over time.</CardDescription>
+            <CardTitle>Attendance & Points</CardTitle>
+            <CardDescription>Average attendance and team points over time.</CardDescription>
           </CardHeader>
           <CardContent>
             {filteredTrend.length > 1 ? (
@@ -75,7 +75,7 @@ export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challenge
                 xKey="date"
                 lines={[
                   { dataKey: "attendance", color: CHART_COLORS.sky, name: "Attendance %" },
-                  { dataKey: "score", color: CHART_COLORS.accent, name: "Avg Score" },
+                  { dataKey: "points", color: CHART_COLORS.accent, name: "Team Points" },
                 ]}
               />
             ) : <Empty />}
@@ -84,12 +84,12 @@ export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challenge
 
         <Card>
           <CardHeader>
-            <CardTitle>Project Score by Team</CardTitle>
-            <CardDescription>Which teams have the highest project scores.</CardDescription>
+            <CardTitle>Points by Team</CardTitle>
+            <CardDescription>Which teams are leading the standings.</CardDescription>
           </CardHeader>
           <CardContent>
-            {projectScoreByTeam.length ? (
-              <SimpleBarChart data={projectScoreByTeam} xKey="team" dataKey="score" color={CHART_COLORS.success} valueFormatter={(v) => v.toFixed(1)} />
+            {teamPoints.length ? (
+              <SimpleBarChart data={teamPoints} xKey="team" dataKey="points" color={CHART_COLORS.success} valueFormatter={(v) => v.toFixed(1)} />
             ) : <Empty />}
           </CardContent>
         </Card>
@@ -97,11 +97,11 @@ export function AnalyticsDashboard({ stats, trend, projectScoreByTeam, challenge
         <Card>
           <CardHeader>
             <CardTitle>Challenge Participation</CardTitle>
-            <CardDescription>Students joined per challenge.</CardDescription>
+            <CardDescription>Teams scored per challenge.</CardDescription>
           </CardHeader>
           <CardContent>
             {challengeParticipation.length ? (
-              <SimpleBarChart data={challengeParticipation} xKey="title" dataKey="participants" color={CHART_COLORS.indigo} />
+              <SimpleBarChart data={challengeParticipation} xKey="title" dataKey="teams" color={CHART_COLORS.indigo} />
             ) : <Empty />}
           </CardContent>
         </Card>

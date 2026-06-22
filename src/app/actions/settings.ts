@@ -25,14 +25,18 @@ export async function updateSettings(input: SettingsInput): Promise<MutationResu
       .limit(1)
       .maybeSingle();
 
+    // revenue_weight / challenge_weight are retained at 0 (challenges are scored
+    // per team now) so the DB CHECK constraint (all four weights sum to 1) holds.
+    const payload = { ...data, revenue_weight: 0, challenge_weight: 0 };
+
     if (existing) {
       const { error } = await supabase
         .from("leaderboard_settings")
-        .update({ ...data, updated_at: new Date().toISOString() })
+        .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("leaderboard_settings").insert(data);
+      const { error } = await supabase.from("leaderboard_settings").insert(payload);
       if (error) throw error;
     }
 

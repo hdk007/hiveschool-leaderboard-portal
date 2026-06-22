@@ -11,7 +11,7 @@ import { RankChange } from "@/components/shared/rank-badge";
 import { AreaTrendChart } from "@/components/charts/charts";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { formatDate, formatNumber, formatCurrency } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
 import type { Team, Student, LeaderboardHistory } from "@/types/database";
 
 interface Props {
@@ -50,17 +50,19 @@ export function TeamProfileModal({ team, open, onOpenChange }: Props) {
 
   // Calculate team stats dynamically from students list
   const activeStudents = students.filter((s) => s.status === "active");
-  const totalRevenue = activeStudents.reduce((sum, s) => sum + Number(s.revenue_generated), 0);
-  const avgRevenue = activeStudents.length > 0 ? totalRevenue / activeStudents.length : 0;
   const totalAssignments = activeStudents.reduce((sum, s) => sum + s.assignments_completed, 0);
   const avgAttendance = activeStudents.length > 0
     ? activeStudents.reduce((sum, s) => sum + Number(s.attendance_percentage), 0) / activeStudents.length
     : 0;
-  const totalChallenges = activeStudents.reduce((sum, s) => sum + Number(s.challenge_score), 0);
+  // Team points = student contribution + daily-challenge points.
+  const challengePoints = Number(team.challenge_points);
+  const totalPoints = Number(team.total_points);
+  const studentPoints = Math.max(0, totalPoints - challengePoints);
+  const challengeShare = totalPoints > 0 ? (challengePoints / totalPoints) * 100 : 0;
 
   const projectTrend = history.map((h) => ({
     date: formatDate(h.snapshot_at, { month: "short", day: "numeric" }),
-    project: Number(h.avg_revenue),
+    project: Number(h.total_points),
   }));
 
   const weeklyGrowth = Number(team.growth_percentage);
@@ -74,10 +76,10 @@ export function TeamProfileModal({ team, open, onOpenChange }: Props) {
       : weeklyGrowth;
 
   const stats = [
-    { label: "Avg Revenue", value: formatCurrency(avgRevenue), icon: Award, color: "#10B981" },
+    { label: "Total Points", value: totalPoints.toFixed(1), icon: Award, color: "#10B981" },
+    { label: "Challenge Points", value: formatNumber(challengePoints), icon: Trophy, color: "#F59E0B" },
     { label: "Total Assignments", value: formatNumber(totalAssignments), icon: ClipboardCheck, color: "#6366F1" },
     { label: "Avg Attendance", value: `${avgAttendance.toFixed(0)}%`, icon: CalendarCheck, color: "#0EA5E9" },
-    { label: "Total Challenges", value: formatNumber(totalChallenges), icon: Trophy, color: "#F59E0B" },
   ];
 
   return (
@@ -117,6 +119,22 @@ export function TeamProfileModal({ team, open, onOpenChange }: Props) {
         ))}
       </div>
 
+      {/* Points breakdown */}
+      <div className="mt-4 rounded-xl border border-border bg-secondary/40 p-4">
+        <div className="mb-2 flex items-center justify-between text-xs">
+          <span className="font-semibold">Points breakdown</span>
+          <span className="text-muted-foreground">{challengeShare.toFixed(0)}% from challenges</span>
+        </div>
+        <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-sky-500" style={{ width: `${100 - challengeShare}%` }} title="Student performance" />
+          <div className="h-full bg-amber-500" style={{ width: `${challengeShare}%` }} title="Challenge points" />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-500" /> Students {studentPoints.toFixed(1)} pts</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-amber-500" /> Challenges {challengePoints.toFixed(1)} pts</span>
+        </div>
+      </div>
+
       {/* Growth */}
       <div className="mt-4 grid grid-cols-2 gap-3">
         <GrowthCard label="Weekly Growth" value={weeklyGrowth} />
@@ -150,11 +168,11 @@ export function TeamProfileModal({ team, open, onOpenChange }: Props) {
 
       {/* Performance timeline */}
       <div className="mt-6">
-        <p className="mb-1 text-sm font-semibold">Average Revenue Timeline</p>
+        <p className="mb-1 text-sm font-semibold">Team Points Timeline</p>
         {loading ? (
           <div className="h-[180px] animate-pulse rounded-xl bg-secondary" />
         ) : projectTrend.length > 1 ? (
-          <AreaTrendChart data={projectTrend} xKey="date" dataKey="project" height={180} valueFormatter={(v) => `$${v.toFixed(0)}`} />
+          <AreaTrendChart data={projectTrend} xKey="date" dataKey="project" height={180} valueFormatter={(v) => v.toFixed(0)} />
         ) : (
           <EmptyState icon={TrendingUp} title="Not enough history yet" description="Trends appear after snapshots are recorded." />
         )}

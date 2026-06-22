@@ -5,6 +5,7 @@ import { TopPerformers } from "@/components/landing/top-performers";
 import { ModuleCard } from "@/components/curriculum/module-card";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { RealtimeRefresher } from "@/components/layout/realtime-refresher";
 import { getCurriculum, getStats, getTopPerformers, getTeams } from "@/lib/queries";
 import { timeAgo } from "@/lib/utils";
@@ -38,13 +39,14 @@ export default async function LandingPage() {
           <StatCard index={0} label="Total Students" value={stats.totalStudents} icon="Users" accent="#7C3AED" />
           <StatCard index={1} label="Active Students" value={stats.activeStudents} icon="UserCheck" accent="#10B981" />
           <StatCard index={2} label="Assignments Done" value={stats.assignmentsCompleted} icon="ClipboardCheck" accent="#6366F1" />
-          <StatCard index={3} label="Avg Revenue" value={stats.avgProjectScore} icon="Award" accent="#F59E0B" format="currency" />
+          <StatCard index={3} label="Avg Score" value={stats.avgScore} icon="Award" accent="#F59E0B" format="decimal" />
           <StatCard
             index={4}
-            label="Leaderboard Updates"
-            value={stats.totalStudents}
-            icon="RefreshCw"
+            label="Avg Attendance"
+            value={stats.avgAttendance}
+            icon="CalendarCheck"
             accent="#0EA5E9"
+            format="percent1"
             hint={stats.leaderboardUpdatedAt ? `Updated ${timeAgo(stats.leaderboardUpdatedAt)}` : "Live"}
           />
         </div>
@@ -103,17 +105,20 @@ export default async function LandingPage() {
                       <p className="text-xs text-muted-foreground">{s.teams?.name ?? "No Team"}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs text-muted-foreground">Revenue</p>
-                      <p className="text-sm font-semibold tabular-nums">${Number(s.revenue_generated).toLocaleString()}</p>
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="hidden text-right sm:block">
+                      <p className="text-xs text-muted-foreground">Assignments</p>
+                      <p className="text-sm font-semibold tabular-nums">{Number(s.assignments_completed)}</p>
                     </div>
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs text-muted-foreground">Attendance</p>
-                      <p className="text-sm font-semibold tabular-nums">{Number(s.attendance_percentage).toFixed(0)}%</p>
+                    <div className="hidden w-28 md:block">
+                      <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Attendance</span>
+                        <span className="font-semibold tabular-nums text-foreground">{Number(s.attendance_percentage).toFixed(0)}%</span>
+                      </div>
+                      <Progress value={Number(s.attendance_percentage)} />
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Final Score</p>
+                      <p className="text-xs text-muted-foreground">Score</p>
                       <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent">
                         {Number(s.final_score).toFixed(1)} pts
                       </span>

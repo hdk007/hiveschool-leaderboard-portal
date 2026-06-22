@@ -14,10 +14,8 @@ import type { LeaderboardSettings, Student } from "@/types/database";
 import { toast } from "sonner";
 
 const FIELDS = [
-  { key: "revenue_weight", label: "Revenue Generated", color: "#F59E0B" },
   { key: "assignment_weight", label: "Assignments Completed", color: "#6366F1" },
   { key: "attendance_weight", label: "Attendance", color: "#0EA5E9" },
-  { key: "challenge_weight", label: "Challenge Score", color: "#7C3AED" },
 ] as const;
 
 type WeightKey = (typeof FIELDS)[number]["key"];
@@ -25,10 +23,8 @@ type WeightKey = (typeof FIELDS)[number]["key"];
 export function SettingsForm({ settings, students }: { settings: LeaderboardSettings | null; students: Student[] }) {
   // Stored as integer percentages in the UI for friendlier editing.
   const initial = {
-    revenue_weight: Math.round((settings?.revenue_weight ?? DEFAULT_WEIGHTS.revenue_weight) * 100),
     assignment_weight: Math.round((settings?.assignment_weight ?? DEFAULT_WEIGHTS.assignment_weight) * 100),
     attendance_weight: Math.round((settings?.attendance_weight ?? DEFAULT_WEIGHTS.attendance_weight) * 100),
-    challenge_weight: Math.round((settings?.challenge_weight ?? DEFAULT_WEIGHTS.challenge_weight) * 100),
   };
 
   const [weights, setWeights] = React.useState(initial);
@@ -38,23 +34,21 @@ export function SettingsForm({ settings, students }: { settings: LeaderboardSett
   const sum = FIELDS.reduce((acc, f) => acc + weights[f.key], 0);
   const valid = sum === 100;
 
-  const set = (key: WeightKey, value: number) => setWeights((w) => ({ ...w, [key]: value }));
-  const reset = () =>
-    setWeights({
-      revenue_weight: 40,
-      assignment_weight: 25,
-      attendance_weight: 20,
-      challenge_weight: 15,
-    });
+  // Keep the two weights complementary so they always total 100%.
+  const set = (key: WeightKey, value: number) =>
+    setWeights(() =>
+      key === "assignment_weight"
+        ? { assignment_weight: value, attendance_weight: 100 - value }
+        : { attendance_weight: value, assignment_weight: 100 - value }
+    );
+  const reset = () => setWeights({ assignment_weight: 60, attendance_weight: 40 });
 
   // Live preview of the new ranking with the in-progress weights.
   const preview = React.useMemo(
     () =>
       computeLeaderboard(students, {
-        revenue_weight: weights.revenue_weight / 100,
         assignment_weight: weights.assignment_weight / 100,
         attendance_weight: weights.attendance_weight / 100,
-        challenge_weight: weights.challenge_weight / 100,
       }).slice(0, 5),
     [students, weights]
   );
@@ -63,10 +57,8 @@ export function SettingsForm({ settings, students }: { settings: LeaderboardSett
     if (!valid) return;
     setSaving(true);
     const res = await updateSettings({
-      revenue_weight: weights.revenue_weight / 100,
       assignment_weight: weights.assignment_weight / 100,
       attendance_weight: weights.attendance_weight / 100,
-      challenge_weight: weights.challenge_weight / 100,
     });
     setSaving(false);
     if (res.ok) toast.success("Weights saved — leaderboard recalculated live.");
@@ -85,14 +77,17 @@ export function SettingsForm({ settings, students }: { settings: LeaderboardSett
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Configure how the leaderboard score is calculated.</p>
+        <p className="text-muted-foreground">Configure how a student&apos;s score is calculated.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Ranking Weights</CardTitle>
-            <CardDescription>Each metric is normalised to 0–100, then blended by these weights. They must total 100%.</CardDescription>
+            <CardTitle>Student Score Weights</CardTitle>
+            <CardDescription>
+              A student&apos;s score blends assignments and attendance (each normalised to 0–100); the two weights must total 100%.
+              Daily challenges are scored at the team level and don&apos;t affect individual scores.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {FIELDS.map((f) => (

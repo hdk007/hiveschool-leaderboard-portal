@@ -60,42 +60,47 @@ export async function deleteChallenge(id: string): Promise<MutationResult> {
   }
 }
 
-export interface StudentScoreInput {
-  student_id: string;
+export interface TeamScoreInput {
+  team_id: string;
   score: number;
 }
 
-export async function saveStudentChallengeScores(challengeId: string, scores: StudentScoreInput[]): Promise<MutationResult> {
+/**
+ * Save the daily-challenge points each team earned. Challenge scores now feed
+ * the TEAM leaderboard (the DB trigger on team_challenge_scores recomputes the
+ * standings). Only teams with score > 0 are stored.
+ */
+export async function saveTeamChallengeScores(challengeId: string, scores: TeamScoreInput[]): Promise<MutationResult> {
   try {
     await requireAdmin();
     const supabase = await createClient();
 
-    const rows = scores.map((s) => ({
-      challenge_id: challengeId,
-      student_id: s.student_id,
-      score: s.score,
-    }));
+    const rows = scores
+      .filter((s) => Number(s.score) > 0)
+      .map((s) => ({
+        challenge_id: challengeId,
+        team_id: s.team_id,
+        score: s.score,
+      }));
 
-    // Delete existing scores for this challenge
+    // Replace existing scores for this challenge.
     const { error: delErr } = await supabase
-      .from("student_challenge_scores")
+      .from("team_challenge_scores")
       .delete()
       .eq("challenge_id", challengeId);
     if (delErr) throw delErr;
 
-    // Insert new scores
     if (rows.length > 0) {
-      const { error: insErr } = await supabase
-        .from("student_challenge_scores")
-        .insert(rows);
+      const { error: insErr } = await supabase.from("team_challenge_scores").insert(rows);
       if (insErr) throw insErr;
     }
 
-    await logActivity({ action: "graded", entity_type: "challenge", entity_id: challengeId, metadata: { count: scores.length } });
+    await logActivity({ action: "graded", entity_type: "challenge", entity_id: challengeId, metadata: { count: rows.length } });
     revalidate();
     revalidatePath("/leaderboard");
+    revalidatePath("/teams");
     revalidatePath("/");
-    
+
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save challenge scores" };

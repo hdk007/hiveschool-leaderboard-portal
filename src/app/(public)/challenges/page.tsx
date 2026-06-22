@@ -21,7 +21,7 @@ export default async function ChallengesPage() {
 
   return (
     <div className="container space-y-8 py-10">
-      <RealtimeRefresher tables={["daily_challenges", "student_challenge_scores"]} />
+      <RealtimeRefresher tables={["daily_challenges", "team_challenge_scores"]} />
       <PageHeader
         eyebrow="Compete"
         title="Daily Challenges"

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Crown, Search, Users, Trophy } from "lucide-react";
+import { Crown, Search, Users, Trophy, Swords } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -114,20 +114,27 @@ export function TeamsGrid({ initialTeams }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mt-5 pt-3 border-t border-border/50 text-center">
+                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-center">
                   <div className="rounded-lg bg-secondary/40 p-2.5">
                     <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                       <Trophy className="size-3.5 text-warning" />
                       <span>Points</span>
                     </div>
-                    <p className="text-base font-bold tabular-nums mt-0.5">{Number(t.total_points).toFixed(1)}</p>
+                    <p className="mt-0.5 text-base font-bold tabular-nums">{Number(t.total_points).toFixed(1)}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 p-2.5">
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                      <Swords className="size-3.5 text-accent" />
+                      <span>Challenge</span>
+                    </div>
+                    <p className="mt-0.5 text-base font-bold tabular-nums">{Number(t.challenge_points).toFixed(0)}</p>
                   </div>
                   <div className="rounded-lg bg-secondary/40 p-2.5">
                     <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="size-3.5 text-sky" />
                       <span>Students</span>
                     </div>
-                    <p className="text-base font-bold tabular-nums mt-0.5">{t.total_students}</p>
+                    <p className="mt-0.5 text-base font-bold tabular-nums">{t.total_students}</p>
                   </div>
                 </div>
               </Card>

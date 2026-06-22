@@ -15,6 +15,8 @@ export interface Team {
   captain_name: string | null;
   description: string | null;
   total_points: number;
+  /** Daily-challenge points earned by the team (subset of total_points). */
+  challenge_points: number;
   total_students: number;
   rank: number | null;
   previous_rank: number | null;
@@ -31,9 +33,7 @@ export interface Student {
   profile_image: string | null;
   team_id: string | null;
   attendance_percentage: number;
-  revenue_generated: number;
   assignments_completed: number;
-  challenge_score: number;
   final_score: number;
   rank: number | null;
   previous_rank: number | null;
@@ -47,10 +47,9 @@ export interface Student {
 
 export interface LeaderboardSettings {
   id: string;
-  revenue_weight: number;
+  /** Student score weights — assignments + attendance sum to 1.0. */
   assignment_weight: number;
   attendance_weight: number;
-  challenge_weight: number;
   updated_at: string;
 }
 
@@ -123,7 +122,16 @@ export interface StudentChallengeScore {
   created_at: string;
 }
 
-export type ChallengeParticipant = StudentChallengeScore;
+/** Daily-challenge points awarded to a team. */
+export interface TeamChallengeScore {
+  id: string;
+  challenge_id: string;
+  team_id: string;
+  score: number;
+  created_at: string;
+}
+
+export type ChallengeParticipant = TeamChallengeScore;
 
 export interface LeaderboardHistory {
   id: string;

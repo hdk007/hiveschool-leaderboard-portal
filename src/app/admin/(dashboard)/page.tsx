@@ -32,7 +32,7 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard index={0} label="Total Students" value={stats.totalStudents} icon="Users" accent="#7C3AED" />
         <StatCard index={1} label="Active Students" value={stats.activeStudents} icon="UserCheck" accent="#10B981" />
-        <StatCard index={2} label="Avg Project Score" value={stats.avgProjectScore} icon="Award" accent="#F59E0B" format="decimal" />
+        <StatCard index={2} label="Avg Score" value={stats.avgScore} icon="Award" accent="#F59E0B" format="decimal" />
         <StatCard index={3} label="Assignments" value={stats.assignmentsCompleted} icon="ClipboardCheck" accent="#6366F1" />
         <StatCard index={4} label="Avg Attendance" value={stats.avgAttendance} icon="CalendarCheck" accent="#0EA5E9" format="percent1" />
         <StatCard index={5} label="Challenges" value={stats.totalChallenges} icon="Swords" accent="#EC4899" />
@@ -44,12 +44,12 @@ export default async function AdminOverviewPage() {
         {/* Project Score trend */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Project Score Trend</CardTitle>
-            <CardDescription>Aggregated project score across recorded leaderboard snapshots.</CardDescription>
+            <CardTitle>Team Points Trend</CardTitle>
+            <CardDescription>Aggregated team points across recorded leaderboard snapshots.</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.trend.length > 1 ? (
-              <AreaTrendChart data={analytics.trend} xKey="date" dataKey="projectScore" valueFormatter={(v) => v.toFixed(1)} />
+              <AreaTrendChart data={analytics.trend} xKey="date" dataKey="points" valueFormatter={(v) => v.toFixed(1)} />
             ) : (
               <p className="py-12 text-center text-sm text-muted-foreground">Snapshots will appear here over time.</p>
             )}
@@ -70,7 +70,7 @@ export default async function AdminOverviewPage() {
                   <Avatar src={t.profile_image} name={t.name} size={32} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{t.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">Revenue: ${Number(t.revenue_generated).toFixed(0)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{t.teams?.name ?? "No team"} · {Number(t.attendance_percentage).toFixed(0)}% attendance</p>
                   </div>
                   <span className="text-sm font-semibold tabular">{Number(t.final_score).toFixed(1)}</span>
                 </div>

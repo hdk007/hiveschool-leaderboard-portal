@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number;
   indicatorClassName?: string;
+  indicatorStyle?: React.CSSProperties;
 }
 
 /** Animated progress bar (0–100). */
 const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value = 0, indicatorClassName, ...props }, ref) => {
+  ({ className, value = 0, indicatorClassName, indicatorStyle, ...props }, ref) => {
     const clamped = Math.min(100, Math.max(0, value));
     return (
       <div
@@ -25,6 +26,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       >
         <motion.div
           className={cn("h-full rounded-full bg-accent", indicatorClassName)}
+          style={indicatorStyle}
           initial={{ width: 0 }}
           animate={{ width: `${clamped}%` }}
           transition={{ duration: 0.8, ease: "easeOut" }}

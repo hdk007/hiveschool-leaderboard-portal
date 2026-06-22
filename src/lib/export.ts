@@ -18,10 +18,8 @@ const COLUMNS = [
   { key: "name", label: "Student Name" },
   { key: "team_name", label: "Team Name" },
   { key: "final_score", label: "Score" },
-  { key: "revenue_generated", label: "Revenue" },
   { key: "assignments_completed", label: "Assignments" },
   { key: "attendance_percentage", label: "Attendance %" },
-  { key: "challenge_score", label: "Challenge Score" },
   { key: "growth_percentage", label: "Growth %" },
 ];
 
@@ -66,7 +64,6 @@ export async function exportLeaderboardPDF(students: ExportStudent[], filename =
           return s.teams?.name ?? "No Team";
         }
         const raw = s[c.key as keyof Student];
-        if (c.key === "revenue_generated") return `$${Number(raw).toFixed(2)}`;
         return raw === null || raw === undefined ? "" : String(raw);
       })
     ),

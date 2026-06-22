@@ -202,7 +202,7 @@ export interface PlatformStats {
   totalStudents: number;
   activeStudents: number;
   totalTeams: number;
-  avgProjectScore: number;
+  avgScore: number;
   assignmentsCompleted: number;
   avgAttendance: number;
   totalChallenges: number;
@@ -213,18 +213,18 @@ export interface PlatformStats {
 export async function getStats(): Promise<PlatformStats> {
   try {
     const supabase = await createClient();
-    
+
     const [
       totalStudentsRes,
       activeStudentsRes,
       studentsDataRes,
       challengesRes,
       announcementsRes,
-      teamsRes
+      teamsRes,
     ] = await Promise.all([
       supabase.from("students").select("id", { count: "exact", head: true }),
       supabase.from("students").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("students").select("revenue_generated, assignments_completed, attendance_percentage, updated_at"),
+      supabase.from("students").select("assignments_completed, attendance_percentage, final_score, status, updated_at"),
       supabase.from("daily_challenges").select("id", { count: "exact", head: true }),
       supabase.from("announcements").select("id", { count: "exact", head: true }),
       supabase.from("teams").select("id", { count: "exact", head: true }),
@@ -237,11 +237,11 @@ export async function getStats(): Promise<PlatformStats> {
     const announcements = announcementsRes.count ?? 0;
     const totalTeams = teamsRes.count ?? 0;
 
-    const totalRevenue = students.reduce((sum, s) => sum + Number(s.revenue_generated), 0);
-    const avgRevenue = students.length > 0 ? totalRevenue / students.length : 0;
+    const active = students.filter((s) => s.status === "active");
+    const avgScore = active.length > 0 ? active.reduce((sum, s) => sum + Number(s.final_score), 0) / active.length : 0;
     const assignmentsCompleted = students.reduce((sum, s) => sum + Number(s.assignments_completed), 0);
     const avgAttendance =
-      students.length > 0 ? students.reduce((sum, s) => sum + Number(s.attendance_percentage), 0) / students.length : 0;
+      active.length > 0 ? active.reduce((sum, s) => sum + Number(s.attendance_percentage), 0) / active.length : 0;
     const lastUpdated = students
       .map((s) => s.updated_at as string)
       .sort()
@@ -251,7 +251,7 @@ export async function getStats(): Promise<PlatformStats> {
       totalStudents,
       activeStudents,
       totalTeams,
-      avgProjectScore: Math.round(avgRevenue * 10) / 10,
+      avgScore: Math.round(avgScore * 10) / 10,
       assignmentsCompleted,
       avgAttendance: Math.round(avgAttendance * 10) / 10,
       totalChallenges: challenges,
@@ -264,7 +264,7 @@ export async function getStats(): Promise<PlatformStats> {
       totalStudents: 0,
       activeStudents: 0,
       totalTeams: 0,
-      avgProjectScore: 0,
+      avgScore: 0,
       assignmentsCompleted: 0,
       avgAttendance: 0,
       totalChallenges: 0,
@@ -320,10 +320,11 @@ export async function getChallenges() {
   }
 }
 
+/** Number of teams that have a recorded score for each challenge. */
 export async function getChallengeParticipantCounts() {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.from("student_challenge_scores").select("challenge_id");
+    const { data, error } = await supabase.from("team_challenge_scores").select("challenge_id");
     if (error) throw error;
     const counts: Record<string, number> = {};
     for (const row of data ?? []) {
@@ -334,6 +335,22 @@ export async function getChallengeParticipantCounts() {
   } catch (err) {
     console.error("Error in getChallengeParticipantCounts:", err);
     return {};
+  }
+}
+
+/** The per-team scores recorded for a single challenge (admin scoring modal). */
+export async function getTeamChallengeScores(challengeId: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("team_challenge_scores")
+      .select("team_id, score")
+      .eq("challenge_id", challengeId);
+    if (error) throw error;
+    return (data ?? []) as { team_id: string; score: number }[];
+  } catch (err) {
+    console.error("Error in getTeamChallengeScores:", err);
+    return [];
   }
 }
 
@@ -443,14 +460,13 @@ export async function getAnalytics() {
       .select("snapshot_at, total_points, avg_revenue, avg_attendance");
     if (histError) throw histError;
 
-    // Bucket history by ISO week date for trend lines.
-    const buckets = new Map<string, { projectScore: number; attendance: number; score: number; n: number }>();
+    // Bucket history by date for trend lines (team points + attendance over time).
+    const buckets = new Map<string, { points: number; attendance: number; n: number }>();
     for (const row of history ?? []) {
       const key = new Date(row.snapshot_at as string).toISOString().slice(0, 10);
-      const b = buckets.get(key) ?? { projectScore: 0, attendance: 0, score: 0, n: 0 };
-      b.projectScore += Number(row.avg_revenue);
+      const b = buckets.get(key) ?? { points: 0, attendance: 0, n: 0 };
+      b.points += Number(row.total_points);
       b.attendance += Number(row.avg_attendance);
-      b.score += Number(row.total_points);
       b.n += 1;
       buckets.set(key, b);
     }
@@ -458,18 +474,17 @@ export async function getAnalytics() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, b]) => ({
         date,
-        projectScore: Math.round((b.projectScore / b.n) * 10) / 10,
+        points: Math.round((b.points / b.n) * 10) / 10,
         attendance: Math.round((b.attendance / b.n) * 10) / 10,
-        score: Math.round((b.score / b.n) * 10) / 10,
       }));
 
-    // Project score (revenue) by team
+    // Total points by team
     const { data: teams, error: teamsError } = await supabase.from("teams").select("name, total_points");
     if (teamsError) throw teamsError;
 
-    const projectScoreByTeam = (teams ?? []).map((t) => ({
+    const teamPoints = (teams ?? []).map((t) => ({
       team: t.name as string,
-      score: Number(t.total_points),
+      points: Number(t.total_points),
     }));
 
     // Student distribution across teams
@@ -489,22 +504,23 @@ export async function getAnalytics() {
       color: `hsl(var(--accent) / ${Math.max(0.3, 1 - i * 0.15)})`
     }));
 
+    // Teams scored per challenge
     const { data: participation, error: partError } = await supabase
       .from("daily_challenges")
-      .select("title, student_challenge_scores(count)");
+      .select("title, team_challenge_scores(count)");
     if (partError) throw partError;
 
     const challengeParticipation = (participation ?? []).map((c) => ({
       title: c.title as string,
-      participants: ((c.student_challenge_scores as unknown as { count: number }[])?.[0]?.count) ?? 0,
+      teams: ((c.team_challenge_scores as unknown as { count: number }[])?.[0]?.count) ?? 0,
     }));
 
-    return { trend, projectScoreByTeam, challengeParticipation, batchDistribution };
+    return { trend, teamPoints, challengeParticipation, batchDistribution };
   } catch (err) {
     console.error("Error in getAnalytics:", err);
     return {
       trend: [],
-      projectScoreByTeam: [],
+      teamPoints: [],
       challengeParticipation: [],
       batchDistribution: [],
     };

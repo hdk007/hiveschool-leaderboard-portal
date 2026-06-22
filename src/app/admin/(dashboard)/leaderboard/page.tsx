@@ -12,7 +12,7 @@ export default async function AdminLeaderboardPage() {
     getSettings(),
   ]);
 
-  const weights = settings ?? { revenue_weight: 0.4, assignment_weight: 0.25, attendance_weight: 0.2, challenge_weight: 0.15 };
+  const weights = settings ?? { assignment_weight: 0.6, attendance_weight: 0.4 };
 
   return (
     <div className="space-y-6">
@@ -22,11 +22,10 @@ export default async function AdminLeaderboardPage() {
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
-          <span className="font-medium text-muted-foreground">Current weights:</span>
-          <span>Revenue <strong>{Math.round(Number(weights.revenue_weight) * 100)}%</strong></span>
+          <span className="font-medium text-muted-foreground">Student score weights:</span>
           <span>Assignments <strong>{Math.round(Number(weights.assignment_weight) * 100)}%</strong></span>
           <span>Attendance <strong>{Math.round(Number(weights.attendance_weight) * 100)}%</strong></span>
-          <span>Challenge <strong>{Math.round(Number(weights.challenge_weight) * 100)}%</strong></span>
+          <span className="text-muted-foreground">Daily challenges are scored per team.</span>
         </CardContent>
       </Card>
 

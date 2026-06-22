@@ -28,11 +28,11 @@ export default async function AdminAnalyticsPage() {
 
   return (
     <>
-      <RealtimeRefresher tables={["students", "teams", "leaderboard_history", "student_challenge_scores"]} />
+      <RealtimeRefresher tables={["students", "teams", "leaderboard_history", "team_challenge_scores"]} />
       <AnalyticsDashboard
         stats={stats}
         trend={analytics.trend}
-        projectScoreByTeam={analytics.projectScoreByTeam}
+        teamPoints={analytics.teamPoints}
         challengeParticipation={analytics.challengeParticipation}
         batchDistribution={batchDistribution}
         completionRate={completionRate}

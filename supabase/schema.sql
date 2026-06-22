@@ -61,6 +61,7 @@ create table if not exists public.teams (
   captain_name           text,
   description            text,
   total_points           numeric(12,2) not null default 0,
+  challenge_points       numeric(12,2) not null default 0,
   total_students         integer not null default 0,
   rank                   integer,
   previous_rank          integer,
@@ -108,10 +109,13 @@ create index if not exists idx_students_final_score on public.students (final_sc
 -- -----------------------------------------------------------------------------
 create table if not exists public.leaderboard_settings (
   id                 uuid primary key default gen_random_uuid(),
-  revenue_weight     numeric(4,3) not null default 0.40,
-  assignment_weight  numeric(4,3) not null default 0.25,
-  attendance_weight  numeric(4,3) not null default 0.20,
-  challenge_weight   numeric(4,3) not null default 0.15,
+  -- Student score weights — assignments + attendance must sum to 1.0.
+  -- revenue_weight / challenge_weight are retained at 0 (challenges are now
+  -- scored at the team level; students no longer generate revenue).
+  revenue_weight     numeric(4,3) not null default 0.000,
+  assignment_weight  numeric(4,3) not null default 0.600,
+  attendance_weight  numeric(4,3) not null default 0.400,
+  challenge_weight   numeric(4,3) not null default 0.000,
   updated_at         timestamptz not null default now(),
   constraint weights_sum_to_one check (
     round(revenue_weight + assignment_weight + attendance_weight + challenge_weight, 3) = 1.000
@@ -195,7 +199,8 @@ create table if not exists public.student_achievements (
 create index if not exists idx_student_achievements_student on public.student_achievements (student_id);
 
 -- -----------------------------------------------------------------------------
--- student_challenge_scores
+-- student_challenge_scores  (LEGACY — retained but no longer feeds scoring;
+-- daily challenges are now scored per team, see team_challenge_scores below.)
 -- -----------------------------------------------------------------------------
 create table if not exists public.student_challenge_scores (
   id            uuid primary key default gen_random_uuid(),
@@ -208,6 +213,21 @@ create table if not exists public.student_challenge_scores (
 
 create index if not exists idx_student_challenge_scores_challenge on public.student_challenge_scores (challenge_id);
 create index if not exists idx_student_challenge_scores_student on public.student_challenge_scores (student_id);
+
+-- -----------------------------------------------------------------------------
+-- team_challenge_scores  (daily-challenge points awarded to a TEAM)
+-- -----------------------------------------------------------------------------
+create table if not exists public.team_challenge_scores (
+  id            uuid primary key default gen_random_uuid(),
+  challenge_id  uuid not null references public.daily_challenges(id) on delete cascade,
+  team_id       uuid not null references public.teams(id) on delete cascade,
+  score         numeric(12,2) not null default 0,
+  created_at    timestamptz not null default now(),
+  unique (challenge_id, team_id)
+);
+
+create index if not exists idx_team_challenge_scores_challenge on public.team_challenge_scores (challenge_id);
+create index if not exists idx_team_challenge_scores_team on public.team_challenge_scores (team_id);
 
 -- -----------------------------------------------------------------------------
 -- leaderboard_history (periodic snapshots for trend / growth analytics)
@@ -312,61 +332,41 @@ security definer
 set search_path = public
 as $$
 declare
-  w_rev   numeric;
   w_asg   numeric;
   w_att   numeric;
-  w_chl   numeric;
-  max_rev numeric;
   max_asg numeric;
-  max_chl numeric;
 begin
-  -- Latest weights (fall back to the defaults if no settings row exists).
-  select revenue_weight, assignment_weight, attendance_weight, challenge_weight
-    into w_rev, w_asg, w_att, w_chl
+  -- Latest weights (assignments + attendance, sum to 1.0). Fall back to defaults.
+  select assignment_weight, attendance_weight
+    into w_asg, w_att
   from public.leaderboard_settings
   order by updated_at desc
   limit 1;
 
-  if w_rev is null then
-    w_rev := 0.40; w_asg := 0.25; w_att := 0.20; w_chl := 0.15;
+  if w_asg is null then
+    w_asg := 0.60; w_att := 0.40;
   end if;
 
-  -- 1. Update each student's aggregated challenge_score from student_challenge_scores
-  --    NOTE: the `where s.id is not null` predicate is intentional — it is always
-  --    true (id is the PK) but satisfies the `safeupdate` extension, which blocks
-  --    UPDATE statements that have no WHERE clause.
-  update public.students s
-     set challenge_score = coalesce((
-           select sum(score)
-             from public.student_challenge_scores
-            where student_id = s.id
-         ), 0)
-   where s.id is not null;
-
-  -- Cohort maxima among active students (guard against divide-by-zero with nullif → coalesce).
-  select
-    coalesce(nullif(max(revenue_generated), 0), 1),
-    coalesce(nullif(max(assignments_completed), 0), 1),
-    coalesce(nullif(max(challenge_score), 0), 1)
-  into max_rev, max_asg, max_chl
+  -- Normalise assignments against the active-cohort max (guard divide-by-zero).
+  -- `where id is not null` on later UPDATEs is intentional — always true (id is
+  -- the PK) but satisfies the `safeupdate` extension which blocks unqualified writes.
+  select coalesce(nullif(max(assignments_completed), 0), 1)
+    into max_asg
   from public.students
   where status = 'active';
 
   -- Preserve the current student ranks as previous_rank for change indicators.
-  -- (`where id is not null` keeps the `safeupdate` extension happy — see above.)
   update public.students set previous_rank = rank where id is not null;
 
-  -- Compute student final scores
+  -- Student final score = assignments + attendance (normalised 0-100 blend).
   with scored_students as (
     select
       id,
       case
         when status = 'inactive' then 0
         else round(
-            w_rev * (revenue_generated::numeric / max_rev * 100)
-          + w_asg * (assignments_completed::numeric / max_asg * 100)
+            w_asg * (assignments_completed::numeric / max_asg * 100)
           + w_att * attendance_percentage
-          + w_chl * (challenge_score::numeric / max_chl * 100)
         , 2)
       end as score
     from public.students
@@ -401,23 +401,29 @@ begin
 
   -- Now update teams
   -- Preserve the current team ranks as previous_rank for change indicators.
-  -- (`where id is not null` keeps the `safeupdate` extension happy — see above.)
   update public.teams set previous_rank = rank where id is not null;
 
-  -- Recalculate team total_points (sum of active student final_scores) and total_students count
+  -- Team total = sum(active student scores) + the team's daily-challenge points.
   with team_aggregates as (
     select
       t.id,
-      coalesce(sum(case when s.status = 'active' then s.final_score else 0 end), 0) as agg_points,
+      coalesce(sum(case when s.status = 'active' then s.final_score else 0 end), 0) as student_points,
       coalesce(sum(case when s.status = 'active' then 1 else 0 end), 0) as agg_students
     from public.teams t
     left join public.students s on s.team_id = t.id
     group by t.id
+  ),
+  team_challenges as (
+    select team_id, coalesce(sum(score), 0) as challenge_points
+    from public.team_challenge_scores
+    group by team_id
   )
   update public.teams t
-     set total_points = ta.agg_points,
-         total_students = ta.agg_students
+     set challenge_points = coalesce(tc.challenge_points, 0),
+         total_points     = ta.student_points + coalesce(tc.challenge_points, 0),
+         total_students   = ta.agg_students
     from team_aggregates ta
+    left join team_challenges tc on tc.team_id = ta.id
    where t.id = ta.id;
 
   -- Re-rank teams based on total_points
@@ -508,7 +514,7 @@ create trigger trg_teams_recalc
   for each statement
   execute function public.trg_teams_recalc();
 
-create or replace function public.trg_challenge_scores_recalc()
+create or replace function public.trg_team_challenge_scores_recalc()
 returns trigger
 language plpgsql
 security definer
@@ -523,11 +529,11 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_challenge_scores_recalc on public.student_challenge_scores;
-create trigger trg_challenge_scores_recalc
-  after insert or update or delete on public.student_challenge_scores
+drop trigger if exists trg_team_challenge_scores_recalc on public.team_challenge_scores;
+create trigger trg_team_challenge_scores_recalc
+  after insert or update or delete on public.team_challenge_scores
   for each statement
-  execute function public.trg_challenge_scores_recalc();
+  execute function public.trg_team_challenge_scores_recalc();
 
 create or replace function public.trg_settings_recalc()
 returns trigger
@@ -564,6 +570,7 @@ alter table public.daily_challenges      enable row level security;
 alter table public.achievements          enable row level security;
 alter table public.student_achievements  enable row level security;
 alter table public.student_challenge_scores enable row level security;
+alter table public.team_challenge_scores enable row level security;
 alter table public.leaderboard_history   enable row level security;
 alter table public.notifications         enable row level security;
 alter table public.activity_logs         enable row level security;
@@ -575,7 +582,7 @@ begin
   foreach t in array array[
     'teams', 'students', 'leaderboard_settings', 'curriculum_modules', 'announcements',
     'daily_challenges', 'achievements', 'student_achievements',
-    'student_challenge_scores', 'leaderboard_history', 'notifications'
+    'student_challenge_scores', 'team_challenge_scores', 'leaderboard_history', 'notifications'
   ]
   loop
     execute format('drop policy if exists "public_read_%1$s" on public.%1$s;', t);
@@ -685,6 +692,7 @@ alter table public.achievements         replica identity full;
 alter table public.notifications        replica identity full;
 alter table public.leaderboard_settings replica identity full;
 alter table public.student_challenge_scores replica identity full;
+alter table public.team_challenge_scores replica identity full;
 
 do $$
 declare
@@ -692,7 +700,8 @@ declare
 begin
   foreach t in array array[
     'teams', 'students', 'announcements', 'daily_challenges', 'curriculum_modules',
-    'achievements', 'student_achievements', 'notifications', 'leaderboard_settings', 'student_challenge_scores'
+    'achievements', 'student_achievements', 'notifications', 'leaderboard_settings',
+    'student_challenge_scores', 'team_challenge_scores'
   ]
   loop
     begin

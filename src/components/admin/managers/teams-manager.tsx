@@ -106,6 +106,7 @@ export function TeamsManager({ initial }: { initial: Team[] }) {
                 <TableHead>Team Name</TableHead>
                 <TableHead className="hidden sm:table-cell">Captain</TableHead>
                 <TableHead className="hidden md:table-cell text-right">Students</TableHead>
+                <TableHead className="hidden lg:table-cell text-right">Challenge</TableHead>
                 <TableHead className="text-right">Total Points</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -117,6 +118,7 @@ export function TeamsManager({ initial }: { initial: Team[] }) {
                   <TableCell className="font-semibold">{t.name}</TableCell>
                   <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{t.captain_name ?? "—"}</TableCell>
                   <TableCell className="hidden md:table-cell text-right tabular">{t.total_students}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-right tabular text-muted-foreground">{Number(t.challenge_points).toFixed(0)}</TableCell>
                   <TableCell className="font-semibold text-right tabular">{Number(t.total_points).toFixed(1)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">

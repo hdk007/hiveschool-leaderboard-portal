@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar } from "@/components/ui/avatar";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { saveStudentChallengeScores } from "@/app/actions/challenges";
-import type { DailyChallenge, Student } from "@/types/database";
+import { saveTeamChallengeScores } from "@/app/actions/challenges";
+import type { DailyChallenge } from "@/types/database";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,15 +18,15 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-interface StudentScoreState {
-  student_id: string;
+interface TeamScoreState {
+  team_id: string;
   name: string;
-  profile_image: string | null;
+  team_logo: string | null;
   score: number;
 }
 
 export function ChallengeScoresModal({ challenge, open, onOpenChange }: Props) {
-  const [scores, setScores] = React.useState<StudentScoreState[]>([]);
+  const [scores, setScores] = React.useState<TeamScoreState[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -40,35 +40,27 @@ export function ChallengeScoresModal({ challenge, open, onOpenChange }: Props) {
     async function load() {
       setLoading(true);
       try {
-        // Fetch active students and any existing scores for this challenge
-        const [studentsRes, scoresRes] = await Promise.all([
-          supabase
-            .from("students")
-            .select("id, name, profile_image")
-            .eq("status", "active")
-            .order("name"),
-          supabase
-            .from("student_challenge_scores")
-            .select("student_id, score")
-            .eq("challenge_id", challengeId),
+        // Fetch teams and any existing scores recorded for this challenge.
+        const [teamsRes, scoresRes] = await Promise.all([
+          supabase.from("teams").select("id, name, team_logo").order("name"),
+          supabase.from("team_challenge_scores").select("team_id, score").eq("challenge_id", challengeId),
         ]);
 
-        if (studentsRes.error) throw studentsRes.error;
+        if (teamsRes.error) throw teamsRes.error;
 
-        const students = (studentsRes.data ?? []) as Pick<Student, "id" | "name" | "profile_image">[];
-        const existingScores = scoresRes.data ?? [];
-        const scoreMap = new Map(existingScores.map((s) => [s.student_id, Number(s.score)]));
+        const teams = (teamsRes.data ?? []) as { id: string; name: string; team_logo: string | null }[];
+        const scoreMap = new Map((scoresRes.data ?? []).map((s) => [s.team_id, Number(s.score)]));
 
-        const initialScores = students.map((s) => ({
-          student_id: s.id,
-          name: s.name,
-          profile_image: s.profile_image,
-          score: scoreMap.get(s.id) ?? 0,
-        }));
-
-        setScores(initialScores);
+        setScores(
+          teams.map((t) => ({
+            team_id: t.id,
+            name: t.name,
+            team_logo: t.team_logo,
+            score: scoreMap.get(t.id) ?? 0,
+          }))
+        );
       } catch (err) {
-        toast.error("Failed to load student challenge scores");
+        toast.error("Failed to load team challenge scores");
         console.error(err);
       } finally {
         setLoading(false);
@@ -78,23 +70,22 @@ export function ChallengeScoresModal({ challenge, open, onOpenChange }: Props) {
     load();
   }, [open, challenge, supabase]);
 
-  const updateScore = (studentId: string, val: number) => {
+  const updateScore = (teamId: string, val: number) => {
     setScores((current) =>
-      current.map((s) => (s.student_id === studentId ? { ...s, score: isNaN(val) ? 0 : val } : s))
+      current.map((s) => (s.team_id === teamId ? { ...s, score: isNaN(val) ? 0 : val } : s))
     );
   };
 
   const handleSave = async () => {
     if (!challenge) return;
     setSaving(true);
-    const inputScores = scores.map((s) => ({
-      student_id: s.student_id,
-      score: s.score,
-    }));
-    const res = await saveStudentChallengeScores(challenge.id, inputScores);
+    const res = await saveTeamChallengeScores(
+      challenge.id,
+      scores.map((s) => ({ team_id: s.team_id, score: s.score }))
+    );
     setSaving(false);
     if (res.ok) {
-      toast.success("Scores updated successfully");
+      toast.success("Team scores updated successfully");
       onOpenChange(false);
     } else {
       toast.error(res.error ?? "Failed to save scores");
@@ -106,10 +97,11 @@ export function ChallengeScoresModal({ challenge, open, onOpenChange }: Props) {
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Trophy className="size-5 text-warning" />
-          Challenge Scores
+          Team Challenge Scores
         </DialogTitle>
         <DialogDescription>
-          Grade each student for: <strong>{challenge?.title}</strong> ({challenge?.points} pts maximum).
+          Award points to each team for: <strong>{challenge?.title}</strong> ({challenge?.points} pts maximum).
+          Points are added to the team&apos;s leaderboard total.
         </DialogDescription>
       </DialogHeader>
 
@@ -119,26 +111,26 @@ export function ChallengeScoresModal({ challenge, open, onOpenChange }: Props) {
         </div>
       ) : scores.length === 0 ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
-          No active students found. Add students in the Students tab first.
+          No teams found. Create teams in the Teams tab first.
         </div>
       ) : (
-        <div className="space-y-2 my-2 max-h-[320px] overflow-y-auto pr-1">
+        <div className="my-2 max-h-[320px] space-y-2 overflow-y-auto pr-1">
           {scores.map((s) => (
-            <div key={s.student_id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/20 p-3">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <Avatar src={s.profile_image} name={s.name} size={28} />
-                <Label className="font-medium truncate">{s.name}</Label>
+            <div key={s.team_id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/20 p-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <Avatar src={s.team_logo} name={s.name} size={28} />
+                <Label className="truncate font-medium">{s.name}</Label>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 <Input
                   type="number"
                   min={0}
                   max={challenge?.points}
                   value={s.score}
-                  onChange={(e) => updateScore(s.student_id, Number(e.target.value))}
-                  className="w-24 text-right"
+                  onChange={(e) => updateScore(s.team_id, Number(e.target.value))}
+                  className="w-20 text-right sm:w-24"
                 />
-                <span className="text-xs text-muted-foreground w-16">/ {challenge?.points} pts</span>
+                <span className="w-14 text-xs text-muted-foreground sm:w-16">/ {challenge?.points} pts</span>
               </div>
             </div>
           ))}
